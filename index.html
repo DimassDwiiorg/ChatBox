@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Galaxy Chat Group</title>
+  <!-- Supabase SDK (Untuk Storage & Database User Profiles) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     /* --- GALAXY THEME & BASE STYLES --- */
     * {
@@ -23,7 +25,6 @@
       overflow: hidden;
     }
 
-    /* Glassmorphism Container */
     .glass-card {
       background: rgba(255, 255, 255, 0.05);
       backdrop-filter: blur(12px);
@@ -71,7 +72,7 @@
       border-bottom: 2px solid #00ffff;
     }
 
-    input[type="text"], input[type="email"], input[type="password"] {
+    input[type="text"], input[type="email"], input[type="password"], input[type="file"] {
       width: 100%;
       padding: 12px 15px;
       margin: 8px 0;
@@ -105,6 +106,16 @@
       box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
     }
 
+    button.btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 8px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
     /* --- CHAT INTERFACE --- */
     .chat-container {
       width: 90vw;
@@ -115,13 +126,18 @@
       overflow: hidden;
     }
 
-    /* Header */
     .chat-header {
       padding: 15px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 15px;
     }
 
     .user-profile-summary {
@@ -139,7 +155,6 @@
       border: 2px solid #00ffff;
     }
 
-    /* Messages Box */
     .chat-messages {
       flex: 1;
       padding: 20px;
@@ -191,7 +206,6 @@
       text-align: right;
     }
 
-    /* Input Box */
     .chat-input-area {
       padding: 15px;
       display: flex;
@@ -199,30 +213,22 @@
       border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    .chat-input-area input {
-      flex: 1;
-      margin: 0;
-    }
+    .chat-input-area input { flex: 1; margin: 0; }
+    .chat-input-area button { width: auto; padding: 0 20px; margin: 0; }
 
-    .chat-input-area button {
-      width: auto;
-      padding: 0 20px;
-      margin: 0;
-    }
-
-    /* Modal Edit Profile */
+    /* --- MODALS --- */
     .modal {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.75);
       display: flex;
       justify-content: center;
       align-items: center;
-      z-index: 100;
+      z-index: 1000;
     }
 
     .modal-content {
-      width: 320px;
+      width: 340px;
       padding: 25px;
       position: relative;
     }
@@ -233,11 +239,76 @@
       cursor: pointer;
       font-size: 1.2em;
     }
+
+    .preview-container {
+      text-align: center;
+      margin: 10px 0;
+    }
+
+    .preview-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #00ffff;
+    }
+
+    /* --- TIC-TAC-TOE BOARD --- */
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .cell {
+      width: 80px;
+      height: 80px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2em;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .cell:hover { background: rgba(0, 255, 255, 0.2); }
+
+    /* Container avatar agar mahkota bisa menempel presisi di atas foto */
+.avatar-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+/* Mahkota Emas Melayang (Glow Soft) */
+.admin-crown {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  filter: drop-shadow(0 0 3px rgba(230, 180, 50, 0.6)); /* Glow mahkota dirampingkan */
+  animation: crown-float 2s ease-in-out infinite alternate;
+  z-index: 10;
+}
+
+/* Username Emas Soft & Elegant */
+.username-admin {
+  color: #f1c40f !important; /* Warna emas yang lebih lembut / tidak neon */
+  font-weight: 700 !important;
+  text-shadow: 
+    0 0 4px rgba(241, 196, 15, 0.4),  /* Glow tipis & halus */
+    0 0 8px rgba(241, 196, 15, 0.2);
+  letter-spacing: 0.3px;
+}
   </style>
 </head>
 <body>
 
-  <!-- ================= AUTH CONTAINER ================= -->
+  <!-- ================= AUTH CONTAINER (FIREBASE) ================= -->
   <div id="auth-section" class="glass-card auth-container">
     <h2>GALAXY CHAT</h2>
     <div class="tab-buttons">
@@ -245,14 +316,12 @@
       <button class="tab-btn" onclick="switchTab('username')">Username</button>
     </div>
 
-    <!-- Form Magic Email (Passwordless) -->
     <div id="form-email">
       <p style="font-size: 0.85em; color: #ccc; margin-bottom: 10px;">Masuk tanpa password via link email.</p>
       <input type="email" id="email-input" placeholder="Masukkan Email Anda...">
       <button class="btn-primary" onclick="sendMagicLink()">Kirim Link Login</button>
     </div>
 
-    <!-- Form Username + Password -->
     <div id="form-username" class="hidden">
       <input type="text" id="user-input" placeholder="Username (huruf & angka)">
       <input type="password" id="pass-input" placeholder="Password (min. 6 karakter)">
@@ -262,39 +331,97 @@
 
   <!-- ================= CHAT CONTAINER ================= -->
   <div id="chat-section" class="glass-card chat-container hidden">
-    <!-- Header -->
     <div class="chat-header">
       <h3>✨ Galaxy Lounge</h3>
-      <div class="user-profile-summary" onclick="openProfileModal()">
-        <img id="my-avatar" src="https://via.placeholder.com/40" class="avatar" alt="PP">
-        <span id="my-username" style="font-weight: bold;">User</span>
+      <div class="header-actions">
+        <button class="btn-secondary" onclick="openGameHub()">🎮 Game Mabar</button>
+        <div class="user-profile-summary" onclick="openProfileModal()">
+          <img id="my-avatar" src="https://via.placeholder.com/40" class="avatar" alt="PP">
+          <span id="my-username" style="font-weight: bold;">User</span>
+        </div>
       </div>
     </div>
 
-    <!-- Area Pesan -->
     <div id="chat-messages" class="chat-messages"></div>
 
-    <!-- Form Kirim Pesan -->
     <div class="chat-input-area">
       <input type="text" id="message-input" placeholder="Ketik pesan galaxy..." onkeypress="handleKeyPress(event)">
       <button class="btn-primary" onclick="sendMessage()">Kirim</button>
     </div>
   </div>
 
-  <!-- ================= MODAL EDIT PROFILE ================= -->
+  <!-- ================= EDIT PROFILE MODAL (SUPABASE FILE UPLOAD) ================= -->
   <div id="profile-modal" class="modal hidden">
     <div class="glass-card modal-content">
       <span class="close-modal" onclick="closeProfileModal()">&times;</span>
-      <h3 style="margin-bottom: 15px;">Edit Profil</h3>
+      <h3 style="margin-bottom: 15px; text-align: center;">Edit Profil</h3>
+      
+      <div class="preview-container">
+        <img id="preview-img" class="preview-avatar" src="https://via.placeholder.com/80" alt="Preview">
+      </div>
+
       <label style="font-size: 0.8em;">Ganti Username:</label>
       <input type="text" id="edit-username-input">
 
-      <button class="btn-primary" onclick="saveProfile()">Simpan</button>
+      <label style="font-size: 0.8em; margin-top: 10px; display: block;">Upload Foto Profil (JPG, JPEG, PNG):</label>
+      <input type="file" id="edit-avatar-file" accept="image/jpeg, image/png, image/jpg" onchange="previewFile()">
+
+      <button class="btn-primary" id="save-btn" style="margin-top: 15px;" onclick="saveProfile()">Simpan Profil</button>
       <button style="width:100%; background:transparent; border:none; color:#ff4d4d; margin-top:10px; cursor:pointer;" onclick="logout()">Logout</button>
     </div>
   </div>
 
-  <!-- ================= FIREBASE & APP LOGIC ================= -->
+  <!-- ================= GAME HUB / INVITE ================= -->
+  <div id="game-hub-modal" class="modal hidden">
+    <div class="glass-card modal-content">
+      <span class="close-modal" onclick="closeModal('game-hub-modal')">&times;</span>
+      <h3>🎮 Mabar Game Hub</h3>
+      <p style="font-size: 0.85em; color: #ccc; margin-top: 5px;">Game: Tic-Tac-Toe</p>
+      
+      <div style="margin-top: 15px;">
+        <label style="font-size: 0.8em;">Undang Teman via Username:</label>
+        <input type="text" id="invite-username-input" placeholder="Username lawan...">
+        <button class="btn-primary" onclick="sendInvite()">Kirim Undangan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= POP-UP TERIMA/TOLAK UNDANGAN ================= -->
+  <div id="invite-received-modal" class="modal hidden">
+    <div class="glass-card modal-content" style="text-align: center;">
+      <h3>⚔️ Tantangan Mabar!</h3>
+      <p id="invite-text" style="margin: 15px 0; font-size: 0.95em;"></p>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn-primary" onclick="acceptInvite()">Terima</button>
+        <button class="btn-secondary" style="background: #ff4d4d; border:none; flex: 1;" onclick="declineInvite()">Tolak</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= ARENA GAME ================= -->
+  <div id="game-arena-modal" class="modal hidden">
+    <div class="glass-card modal-content" style="width: auto; text-align: center;">
+      <span class="close-modal" onclick="leaveGame()">&times;</span>
+      <h3>Tic-Tac-Toe Mabar</h3>
+      <p id="game-status" style="margin-top: 5px; color: #00ffff; font-size: 0.9em;">Menunggu Giliran...</p>
+      
+      <div class="board" id="board">
+        <div class="cell" onclick="makeMove(0)"></div>
+        <div class="cell" onclick="makeMove(1)"></div>
+        <div class="cell" onclick="makeMove(2)"></div>
+        <div class="cell" onclick="makeMove(3)"></div>
+        <div class="cell" onclick="makeMove(4)"></div>
+        <div class="cell" onclick="makeMove(5)"></div>
+        <div class="cell" onclick="makeMove(6)"></div>
+        <div class="cell" onclick="makeMove(7)"></div>
+        <div class="cell" onclick="makeMove(8)"></div>
+      </div>
+
+      <button class="btn-secondary" onclick="leaveGame()">Keluar Permainan</button>
+    </div>
+  </div>
+
+  <!-- ================= APP LOGIC ================= -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
@@ -302,10 +429,10 @@
       signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { 
-      getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, getDoc 
+      getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, setDoc, getDoc, updateDoc
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // Konfigurasi Firebase Anda
+    // 1. FIREBASE CONFIG
     const firebaseConfig = {
       apiKey: "AIzaSyCJMRTfrl3j1jL2Bii4cG1IYD1ZoYHrp4Q",
       authDomain: "galaxy-chat-app-31da3.firebaseapp.com",
@@ -315,168 +442,191 @@
       appId: "1:662698919289:web:87782761ee54b4b366dba8"
     };
 
-    // Inisialisasi Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    // 2. SUPABASE CONFIG
+    const SUPABASE_URL = "https://hyfhhxrnvqhjarwuickw.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5ZmhoeHJudnFoamFyd3VpY2t3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2MDkyMjEsImV4cCI6MjEwMDE4NTIyMX0.HbFmEMi31rdBntURcO7ephYGQSAAYXKHoy4_DgDAEu4";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     let currentUserData = null;
+    let activeMatchRef = null;
+    let currentSymbol = 'X';
 
-    // --- ALUR AUTENTIKASI ---
-
-    // Passwordless Email Link Handler
+    // --- AUTHENTICATION (FIREBASE) ---
     window.sendMagicLink = async () => {
       const email = document.getElementById('email-input').value.trim();
       if (!email) return alert('Masukkan email!');
 
-      const actionCodeSettings = {
-        url: window.location.href,
-        handleCodeInApp: true,
-      };
-
       try {
-        await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+        await sendSignInLinkToEmail(auth, email, { url: window.location.href, handleCodeInApp: true });
         window.localStorage.setItem('emailForSignIn', email);
-        alert('Link login telah dikirim ke email kamu! Cek Inbox/Spam.');
+        alert('Link login dikirim ke email!');
       } catch (err) {
-        alert('Gagal mengirim email: ' + err.message);
+        alert('Gagal: ' + err.message);
       }
     };
 
-    // Cek jika halaman dibuka dari Link Email
     if (isSignInWithEmailLink(auth, window.location.href)) {
-      let email = window.localStorage.getItem('emailForSignIn');
-      if (!email) {
-        email = window.prompt('Masukkan email kamu kembali untuk verifikasi:');
-      }
-      signInWithEmailLink(auth, email, window.location.href)
-        .then(async (result) => {
-          window.localStorage.removeItem('emailForSignIn');
-          await initUserProfile(result.user, email.split('@')[0]);
-        })
-        .catch((err) => alert('Gagal login via link: ' + err.message));
+      let email = window.localStorage.getItem('emailForSignIn') || window.prompt('Masukkan email:');
+      signInWithEmailLink(auth, email, window.location.href).then(async (res) => {
+        window.localStorage.removeItem('emailForSignIn');
+        await initUserProfile(res.user, email.split('@')[0]);
+      });
     }
 
-    // Login / Register via Username + Password (PERBAIKAN)
     window.loginWithUsername = async () => {
       const usernameInput = document.getElementById('user-input').value.trim();
       const pass = document.getElementById('pass-input').value;
 
-      if (!usernameInput || !pass) return alert('Isi username dan password!');
-      if (pass.length < 6) return alert('Password minimal harus 6 karakter!');
-
+      if (!usernameInput || !pass) return alert('Isi username & password!');
       const cleanUsername = usernameInput.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (!cleanUsername) return alert('Username hanya boleh berisi huruf dan angka!');
-
-      // Menggunakan domain resmi firebaseapp.com
       const dummyEmail = `${cleanUsername}@${firebaseConfig.projectId}.firebaseapp.com`;
 
       try {
         const res = await signInWithEmailAndPassword(auth, dummyEmail, pass);
         await initUserProfile(res.user, usernameInput);
       } catch (err) {
-        if (
-          err.code === 'auth/user-not-found' || 
-          err.code === 'auth/invalid-credential' ||
-          err.code === 'auth/invalid-email'
-        ) {
-          try {
-            const newRes = await createUserWithEmailAndPassword(auth, dummyEmail, pass);
-            await initUserProfile(newRes.user, usernameInput);
-          } catch (createErr) {
-            alert('Gagal membuat akun: ' + createErr.message);
-          }
-        } else {
-          alert('Error Login: ' + err.message);
+        try {
+          const newRes = await createUserWithEmailAndPassword(auth, dummyEmail, pass);
+          await initUserProfile(newRes.user, usernameInput);
+        } catch (createErr) {
+          alert('Error: ' + createErr.message);
         }
       }
     };
 
-    // Inisialisasi Data Profil di Firestore
+    // --- FITUR PROFIL & UNGGAH FILE FOTO PROFIL (SUPABASE STORAGE) ---
     async function initUserProfile(user, defaultUsername) {
       try {
-        const userRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(userRef);
+        let { data: spUser } = await supabase.from('user_profiles').select('*').eq('uid', user.uid).single();
 
-        if (!docSnap.exists()) {
-          const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(defaultUsername || user.uid)}`;
-          
-          const newData = {
+        if (!spUser) {
+          const defaultAvatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(defaultUsername || user.uid)}`;
+          const newUser = {
             uid: user.uid,
             username: defaultUsername || "GalaxyUser",
-            photoURL: avatarUrl,
-            userColor: generateUniqueColor(defaultUsername || user.uid)
+            photo_url: defaultAvatar,
+            user_color: generateUniqueColor(defaultUsername || user.uid),
+            role: 'user'
           };
-          
-          await setDoc(userRef, newData);
-          currentUserData = newData;
+
+          await supabase.from('user_profiles').insert([newUser]);
+          currentUserData = {
+            ...newUser,
+            photoURL: newUser.photo_url,
+            userColor: newUser.user_color
+          };
         } else {
-          currentUserData = docSnap.data();
+          currentUserData = {
+            uid: spUser.uid,
+            username: spUser.username,
+            photoURL: spUser.photo_url,
+            userColor: spUser.user_color,
+            role: spUser.role || 'user'
+          };
         }
-        
+
         updateUI();
         loadMessages();
+        listenToInvites();
       } catch (error) {
-        console.error("Error Firestore:", error);
-        alert("Gagal memuat profil: " + error.message);
+        console.error("Supabase Profile Error:", error);
       }
     }
 
-    // Generator Warna Hashing
-    function generateUniqueColor(str) {
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    // Preview Foto lokal sebelum diunggah
+    window.previewFile = () => {
+      const fileInput = document.getElementById('edit-avatar-file');
+      const previewImg = document.getElementById('preview-img');
+      const file = fileInput.files[0];
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => previewImg.src = e.target.result;
+        reader.readAsDataURL(file);
       }
-      const h = Math.abs(hash) % 360;
-      return `hsl(${h}, 80%, 65%)`;
-    }
+    };
 
-    // Observer Status Login
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        await initUserProfile(user, user.email ? user.email.split('@')[0] : 'User');
-      } else {
-        document.getElementById('auth-section').classList.remove('hidden');
-        document.getElementById('chat-section').classList.add('hidden');
+    // Unggah file ke Supabase Storage & Simpan URL-nya ke Database
+    window.saveProfile = async () => {
+      const newUsername = document.getElementById('edit-username-input').value.trim();
+      const fileInput = document.getElementById('edit-avatar-file');
+      const saveBtn = document.getElementById('save-btn');
+      const file = fileInput.files[0];
+
+      if (!newUsername) return alert('Username tidak boleh kosong!');
+
+      saveBtn.innerText = "Mengunggah Foto...";
+      saveBtn.disabled = true;
+
+      let uploadedPhotoUrl = currentUserData.photoURL;
+
+      try {
+        // Jika pengguna memilih file gambar baru
+        if (file) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${currentUserData.uid}_${Date.now()}.${fileExt}`;
+
+          // Unggah ke Bucket "avatars"
+          const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(fileName, file, { upsert: true });
+
+          if (uploadError) throw uploadError;
+
+          // Ambil Public URL gambar
+          const { data: publicUrlData } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(fileName);
+
+          uploadedPhotoUrl = publicUrlData.publicUrl;
+        }
+
+        // Simpan data profil ke Database Supabase (sertakan role)
+        const { error: dbError } = await supabase.from('user_profiles').upsert({
+          uid: currentUserData.uid,
+          username: newUsername,
+          photo_url: uploadedPhotoUrl,
+          user_color: generateUniqueColor(newUsername),
+          role: currentUserData.role || 'user'
+        });
+
+        if (dbError) throw dbError;
+
+        currentUserData.username = newUsername;
+        currentUserData.photoURL = uploadedPhotoUrl;
+        currentUserData.userColor = generateUniqueColor(newUsername);
+
+        updateUI();
+        closeProfileModal();
+        alert('Profil & Foto Profil berhasil diubah!');
+      } catch (err) {
+        alert("Gagal memperbarui profil: " + err.message);
+      } finally {
+        saveBtn.innerText = "Simpan Profil";
+        saveBtn.disabled = false;
       }
-    });
+    };
 
-    function updateUI() {
-      if (!currentUserData) return;
-      document.getElementById('auth-section').classList.add('hidden');
-      document.getElementById('chat-section').classList.remove('hidden');
-
-      document.getElementById('my-username').innerText = currentUserData.username;
-      document.getElementById('my-username').style.color = currentUserData.userColor;
-      document.getElementById('my-avatar').src = currentUserData.photoURL;
-    }
-
-    // --- FITUR CHAT REAL-TIME (PERBAIKAN TIMESTAMP) ---
+    // --- FITUR CHAT REAL-TIME (FIREBASE) ---
     window.sendMessage = async () => {
       const input = document.getElementById('message-input');
       const text = input.value.trim();
       if (!text || !currentUserData) return;
 
       input.value = '';
-
-      try {
-        await addDoc(collection(db, "messages"), {
-          uid: currentUserData.uid,
-          username: currentUserData.username,
-          userColor: currentUserData.userColor || '#00f3ff',
-          photoURL: currentUserData.photoURL,
-          text: text,
-          createdAt: serverTimestamp()
-        });
-      } catch (err) {
-        console.error("Gagal mengirim:", err);
-        alert("Gagal mengirim pesan!");
-      }
-    };
-
-    window.handleKeyPress = (e) => {
-      if (e.key === 'Enter') sendMessage();
+      await addDoc(collection(db, "messages"), {
+        uid: currentUserData.uid,
+        username: currentUserData.username,
+        userColor: currentUserData.userColor,
+        photoURL: currentUserData.photoURL,
+        role: currentUserData.role || 'user',
+        text: text,
+        createdAt: serverTimestamp()
+      });
     };
 
     function loadMessages() {
@@ -488,94 +638,191 @@
         snapshot.forEach((doc) => {
           const msg = doc.data();
           const isMine = msg.uid === currentUserData?.uid;
+          const isAdmin = msg.role === 'admin';
+          let timeStr = msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Baru saja';
 
           const msgEl = document.createElement('div');
           msgEl.className = `message ${isMine ? 'mine' : ''}`;
-
-          // Penanganan Timestamp Aman agar tidak crash saat baru dikirim
-          let timeStr = 'Baru saja';
-          if (msg.createdAt && msg.createdAt.toDate) {
-            timeStr = msg.createdAt.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-          }
-
           msgEl.innerHTML = `
-            <img src="${msg.photoURL}" class="avatar" alt="Avatar">
+            <div class="avatar-wrapper">
+              ${isAdmin ? '<span class="admin-crown" title="Admin Galaxy Chat">👑</span>' : ''}
+              <img src="${msg.photoURL}" class="avatar" alt="Avatar">
+            </div>
             <div class="message-content">
-              <span class="username-tag" style="color: ${msg.userColor || '#00f3ff'};">${msg.username || 'User'}</span>
+              <span class="username-tag ${isAdmin ? 'username-admin' : ''}" style="${!isAdmin ? `color: ${msg.userColor || '#00f3ff'}` : ''}">${msg.username}</span>
               <div class="message-text">${escapeHTML(msg.text || '')}</div>
               <div class="timestamp">${timeStr}</div>
             </div>
           `;
           container.appendChild(msgEl);
         });
-
-        // Auto Scroll ke bawah
         container.scrollTop = container.scrollHeight;
-      }, (err) => {
-        console.error("Error Snapshot:", err);
       });
+    }
+
+    // --- FITUR GAME MABAR (FIREBASE REALTIME) ---
+    let pendingInviteId = null;
+
+    window.sendInvite = async () => {
+      const targetUser = document.getElementById('invite-username-input').value.trim();
+      if (!targetUser) return alert('Ketik username lawan!');
+
+      const matchRef = await addDoc(collection(db, "matches"), {
+        board: Array(9).fill(null),
+        turn: 'X',
+        winner: null
+      });
+
+      await addDoc(collection(db, "invites"), {
+        from: currentUserData.username,
+        to: targetUser,
+        matchId: matchRef.id,
+        status: 'pending'
+      });
+
+      alert('Undangan dikirim ke ' + targetUser);
+      closeModal('game-hub-modal');
+    };
+
+    function listenToInvites() {
+      const q = query(collection(db, "invites"));
+      onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          const invite = change.doc.data();
+          if (invite.to === currentUserData.username && invite.status === 'pending') {
+            pendingInviteId = change.doc.id;
+            document.getElementById('invite-text').innerText = `"${invite.from}" mengundangmu mabar Tic-Tac-Toe!`;
+            document.getElementById('invite-received-modal').classList.remove('hidden');
+          }
+          if (invite.from === currentUserData.username && invite.status === 'accepted') {
+            startMatch(invite.matchId, 'X');
+          }
+        });
+      });
+    }
+
+    window.acceptInvite = async () => {
+      closeModal('invite-received-modal');
+      const inviteRef = doc(db, "invites", pendingInviteId);
+      const inviteSnap = await getDoc(inviteRef);
+      await updateDoc(inviteRef, { status: 'accepted' });
+
+      startMatch(inviteSnap.data().matchId, 'O');
+    };
+
+    window.declineInvite = async () => {
+      closeModal('invite-received-modal');
+      await updateDoc(doc(db, "invites", pendingInviteId), { status: 'declined' });
+    };
+
+    function startMatch(matchId, symbol) {
+      currentSymbol = symbol;
+      activeMatchRef = doc(db, "matches", matchId);
+
+      document.getElementById('game-arena-modal').classList.remove('hidden');
+
+      onSnapshot(activeMatchRef, (docSnap) => {
+        if (!docSnap.exists()) return;
+        const data = docSnap.data();
+        
+        const cells = document.querySelectorAll('.cell');
+        data.board.forEach((val, i) => cells[i].innerText = val || '');
+
+        const statusEl = document.getElementById('game-status');
+        if (data.winner) {
+          statusEl.innerText = data.winner === 'SERI' ? 'Permainan Seri!' : `Pemenang: ${data.winner}!`;
+        } else {
+          statusEl.innerText = data.turn === currentSymbol ? 'Giliran Kamu!' : 'Menunggu lawan...';
+        }
+      });
+    }
+
+    window.makeMove = async (idx) => {
+      const matchSnap = await getDoc(activeMatchRef);
+      const data = matchSnap.data();
+
+      if (data.winner || data.turn !== currentSymbol || data.board[idx] !== null) return;
+
+      const newBoard = [...data.board];
+      newBoard[idx] = currentSymbol;
+      
+      let winner = checkWinner(newBoard);
+      let nextTurn = currentSymbol === 'X' ? 'O' : 'X';
+
+      await updateDoc(activeMatchRef, {
+        board: newBoard,
+        turn: nextTurn,
+        winner: winner
+      });
+    };
+
+    function checkWinner(b) {
+      const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+      for (let [a, b1, c] of lines) {
+        if (b[a] && b[a] === b[b1] && b[a] === b[c]) return b[a];
+      }
+      if (b.every(c => c !== null)) return 'SERI';
+      return null;
+    }
+
+    window.leaveGame = () => closeModal('game-arena-modal');
+
+    // --- HELPER & UI UTILS ---
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        await initUserProfile(user, user.email ? user.email.split('@')[0] : 'User');
+      } else {
+        document.getElementById('auth-section').classList.remove('hidden');
+        document.getElementById('chat-section').classList.add('hidden');
+      }
+    });
+
+    function updateUI() {
+      document.getElementById('auth-section').classList.add('hidden');
+      document.getElementById('chat-section').classList.remove('hidden');
+      
+      const myUsernameEl = document.getElementById('my-username');
+      myUsernameEl.innerText = currentUserData.username;
+
+      // Styling Admin jika akun yang login bernilai admin
+      if (currentUserData.role === 'admin') {
+        myUsernameEl.classList.add('username-admin');
+        myUsernameEl.style.color = ''; // Menggunakan style CSS .username-admin
+      } else {
+        myUsernameEl.classList.remove('username-admin');
+        myUsernameEl.style.color = currentUserData.userColor;
+      }
+
+      document.getElementById('my-avatar').src = currentUserData.photoURL;
+      document.getElementById('preview-img').src = currentUserData.photoURL;
+    }
+
+    function generateUniqueColor(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      return `hsl(${Math.abs(hash) % 360}, 80%, 65%)`;
     }
 
     function escapeHTML(str) {
-      return str.replace(/[&<>'"]/g, 
-        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-      );
+      return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
     }
 
-    // --- FITUR PROFILE MODAL ---
     window.openProfileModal = () => {
       document.getElementById('edit-username-input').value = currentUserData.username;
+      document.getElementById('preview-img').src = currentUserData.photoURL;
+      document.getElementById('edit-avatar-file').value = '';
       document.getElementById('profile-modal').classList.remove('hidden');
     };
-
-    window.closeProfileModal = () => {
-      document.getElementById('profile-modal').classList.add('hidden');
-    };
-
-    window.saveProfile = async () => {
-      const newUsername = document.getElementById('edit-username-input').value.trim();
-      
-      if (!newUsername) return alert('Username tidak boleh kosong!');
-
-      const userRef = doc(db, "users", currentUserData.uid);
-      const updatedData = {
-        username: newUsername,
-        userColor: generateUniqueColor(newUsername)
-      };
-
-      await setDoc(userRef, updatedData, { merge: true });
-      currentUserData = { ...currentUserData, ...updatedData };
-
-      updateUI();
-      closeProfileModal();
-      alert('Profil berhasil diperbarui!');
-    };
-
-    window.logout = () => {
-      signOut(auth).then(() => {
-        closeProfileModal();
-        location.reload();
-      });
-    };
-
-    // UI Tab Switcher
+    window.closeProfileModal = () => document.getElementById('profile-modal').classList.add('hidden');
+    window.openGameHub = () => document.getElementById('game-hub-modal').classList.remove('hidden');
+    window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+    window.logout = () => signOut(auth).then(() => location.reload());
+    window.handleKeyPress = (e) => { if (e.key === 'Enter') sendMessage(); };
     window.switchTab = (tab) => {
-      const btnEmail = document.querySelectorAll('.tab-btn')[0];
-      const btnUser = document.querySelectorAll('.tab-btn')[1];
-      const formEmail = document.getElementById('form-email');
-      const formUser = document.getElementById('form-username');
-
-      if (tab === 'email') {
-        btnEmail.classList.add('active');
-        btnUser.classList.remove('active');
-        formEmail.classList.remove('hidden');
-        formUser.classList.add('hidden');
-      } else {
-        btnUser.classList.add('active');
-        btnEmail.classList.remove('active');
-        formUser.classList.remove('hidden');
-        formEmail.classList.add('hidden');
-      }
+      document.querySelectorAll('.tab-btn')[0].classList.toggle('active', tab === 'email');
+      document.querySelectorAll('.tab-btn')[1].classList.toggle('active', tab === 'username');
+      document.getElementById('form-email').classList.toggle('hidden', tab !== 'email');
+      document.getElementById('form-username').classList.toggle('hidden', tab !== 'username');
     };
   </script>
 </body>
