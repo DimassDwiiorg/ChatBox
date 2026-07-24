@@ -2,164 +2,205 @@
 <html lang="id" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ROOM-CHAT</title>
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Supabase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <style>
     :root {
       --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-      --bg-main: #f8fafc;
-      --card-bg: rgba(255, 255, 255, 0.85);
-      --card-border: #e2e8f0;
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --input-bg: #f1f5f9;
-      --msg-other: #f1f5f9;
-      --msg-mine: #4f46e5;
-      --msg-mine-text: #ffffff;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-      --shadow-lg: 0 10px 25px -5px rgba(0,0,0,0.08);
-      --modal-overlay: rgba(15, 23, 42, 0.4);
-    }
-
-    [data-theme="dark"] {
-      --bg-main: #0f172a;
-      --card-bg: rgba(30, 41, 59, 0.85);
-      --card-border: #334155;
+      --bg-main: #0a0c10;
+      --card-bg: rgba(30, 41, 59, 0.65);
+      --card-border: rgba(255, 255, 255, 0.12);
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
-      --primary: #6366f1;
-      --primary-hover: #4f46e5;
-      --input-bg: #1e293b;
-      --msg-other: #334155;
-      --msg-mine: #6366f1;
+      --primary: #f59e0b;
+      --primary-hover: #d97706;
+      --input-bg: rgba(15, 23, 42, 0.6);
+      --msg-other: rgba(30, 41, 59, 0.75);
+      --msg-mine: rgba(217, 119, 6, 0.85);
       --msg-mine-text: #ffffff;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
-      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-      --modal-overlay: rgba(0, 0, 0, 0.7);
+      --reply-bg: rgba(0, 0, 0, 0.3);
+      --reply-text: #e2e8f0;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.4);
+      --shadow-lg: 0 20px 30px rgba(0, 0, 0, 0.6);
+      --modal-overlay: rgba(0, 0, 0, 0.75);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-family); transition: background-color 0.2s ease, color 0.2s ease; }
-    body { background-color: var(--bg-main); color: var(--text-main); min-height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+    body { 
+      background-color: var(--bg-main); 
+      color: var(--text-main); 
+      min-height: 100vh; 
+      min-height: 100dvh; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      overflow: hidden; 
+      position: relative;
+    }
+
+    /* BACKGROUND VIDEO */
+    .bg-video {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      min-width: 100%;
+      min-height: 100%;
+      width: auto;
+      height: auto;
+      z-index: -2;
+      transform: translate(-50%, -50%);
+      object-fit: cover;
+      filter: brightness(0.65) contrast(1.1);
+    }
+
+    .bg-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 100%);
+      z-index: -1;
+      pointer-events: none;
+    }
 
     /* TOAST */
     #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-    .toast { min-width: 280px; padding: 12px 20px; border-radius: 12px; background: var(--card-bg); backdrop-filter: blur(12px); border: 1px solid var(--card-border); color: var(--text-main); box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 12px; font-size: 0.9rem; font-weight: 600; opacity: 0; transform: translateY(-20px); transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); pointer-events: auto; }
+    .toast { min-width: 280px; padding: 12px 20px; border-radius: 12px; background: var(--card-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--card-border); color: var(--text-main); box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 12px; font-size: 0.9rem; font-weight: 600; opacity: 0; transform: translateY(-20px); transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); pointer-events: auto; }
     .toast.show { opacity: 1; transform: translateY(0); }
     .toast.success { border-left: 4px solid #10b981; }
     .toast.error { border-left: 4px solid #ef4444; }
     .toast.info { border-left: 4px solid var(--primary); }
 
-    .theme-toggle-btn { position: fixed; top: 20px; right: 20px; background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-main); width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--shadow-sm); z-index: 100; font-size: 1.2rem; }
-    .glass-card { background: var(--card-bg); backdrop-filter: blur(16px); border: 1px solid var(--card-border); border-radius: 20px; box-shadow: var(--shadow-lg); }
+    .glass-card { 
+      background: var(--card-bg); 
+      backdrop-filter: blur(20px); 
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border); 
+      border-radius: 20px; 
+      box-shadow: var(--shadow-lg); 
+    }
     .hidden { display: none !important; }
 
     /* AUTH & CHAT UI */
-    .auth-container { width: 100%; max-width: 400px; padding: 36px 28px; text-align: center; }
-    .auth-container h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 24px; }
-    .tab-buttons { display: flex; background: var(--input-bg); padding: 4px; border-radius: 12px; margin-bottom: 20px; }
+    .auth-container { width: 90%; max-width: 400px; padding: 36px 28px; text-align: center; }
+    .auth-container h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 24px; color: #fbbf24; text-shadow: 0 0 12px rgba(245, 158, 11, 0.4); }
+    .tab-buttons { display: flex; background: var(--input-bg); padding: 4px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--card-border); }
     .tab-btn { flex: 1; padding: 8px 12px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-weight: 600; font-size: 0.88rem; border-radius: 8px; }
-    .tab-btn.active { background: var(--card-bg); color: var(--text-main); box-shadow: var(--shadow-sm); }
+    .tab-btn.active { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); box-shadow: var(--shadow-sm); }
     input[type="text"], input[type="email"], input[type="password"], input[type="file"], select { width: 100%; padding: 12px 16px; margin: 8px 0; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: 12px; color: var(--text-main); font-size: 0.9rem; outline: none; }
-    button.btn-primary { width: 100%; padding: 12px 20px; margin-top: 12px; background: var(--primary); border: none; border-radius: 12px; color: #fff; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
-    button.btn-secondary { background: var(--input-bg); border: 1px solid var(--card-border); color: var(--text-main); padding: 8px 16px; border-radius: 10px; font-weight: 600; font-size: 0.85rem; cursor: pointer; }
+    input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, select:focus { border-color: var(--primary); }
+    button.btn-primary { width: 100%; padding: 12px 20px; margin-top: 12px; background: var(--primary); border: none; border-radius: 12px; color: #000000; font-weight: 700; font-size: 0.9rem; cursor: pointer; }
+    button.btn-primary:hover { background: var(--primary-hover); }
+    button.btn-secondary { background: var(--input-bg); border: 1px solid var(--card-border); color: var(--text-main); padding: 8px 14px; border-radius: 10px; font-weight: 600; font-size: 0.85rem; cursor: pointer; white-space: nowrap; }
 
     /* SPINNER LOADING STYLES */
-    .btn-loading {
-      position: relative;
-      pointer-events: none;
-      color: transparent !important;
-    }
+    .btn-loading { position: relative; pointer-events: none; color: transparent !important; }
+    .btn-loading::after { content: ""; position: absolute; width: 18px; height: 18px; top: 50%; left: 50%; margin-top: -9px; margin-left: -9px; border: 2px solid rgba(0, 0, 0, 0.3); border-radius: 50%; border-top-color: #000000; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .btn-loading::after {
-      content: "";
-      position: absolute;
-      width: 18px;
-      height: 18px;
-      top: 50%;
-      left: 50%;
-      margin-top: -9px;
-      margin-left: -9px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      border-top-color: #ffffff;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .chat-container { width: 90vw; max-width: 900px; height: 85vh; display: flex; flex-direction: column; overflow: hidden; }
-    .chat-header { padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); }
-    .header-actions { display: flex; align-items: center; gap: 16px; }
-    .user-profile-summary { display: flex; align-items: center; gap: 10px; padding: 4px 8px; border-radius: 30px; cursor: pointer; }
-    .avatar { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; display: block; }
+    /* CHAT CONTAINER RESPONSIVE */
+    .chat-container { width: 95vw; max-width: 900px; height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
     
-    /* AVATAR WRAPPER & MAHKOTA FLOATING */
-    .avatar-wrapper {
-      position: relative;
-      display: inline-block;
-      flex-shrink: 0;
-    }
-    .admin-crown {
-      position: absolute;
-      top: -12px;
-      left: 50%;
-      transform: translateX(-50%) rotate(-12deg);
-      font-size: 16px;
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      filter: drop-shadow(0 2px 4px rgba(245, 158, 11, 0.8));
-      z-index: 2;
-      pointer-events: none;
-    }
+    .chat-header { padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); gap: 10px; background: rgba(15, 23, 42, 0.4); }
+    .header-title-container { display: flex; align-items: center; gap: 10px; }
+    .header-title-container h3 { font-size: 1.1rem; font-weight: 700; white-space: nowrap; color: #fbbf24; }
+    
+    .online-badge { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .online-dot { width: 8px; height: 8px; background-color: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; }
 
-    .chat-messages { flex: 1; padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
-    .message { display: flex; gap: 12px; max-width: 75%; align-items: flex-start; }
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .user-profile-summary { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 30px; cursor: pointer; }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; display: block; }
+    
+    .avatar-wrapper { position: relative; display: inline-block; flex-shrink: 0; }
+    .admin-crown { position: absolute; top: -10px; left: 50%; transform: translateX(-50%) rotate(-12deg); font-size: 14px; background: transparent; border: none; box-shadow: none; filter: drop-shadow(0 2px 4px rgba(245, 158, 11, 0.8)); z-index: 2; pointer-events: none; }
+
+    /* CHAT MESSAGES CONTAINER */
+    .chat-messages { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; position: relative; }
+    .message { display: flex; gap: 8px; max-width: 85%; align-items: flex-end; position: relative; }
     .message.mine { align-self: flex-end; flex-direction: row-reverse; }
-    .message-content { background: var(--msg-other); color: var(--text-main); padding: 12px 16px; border-radius: 16px; border-top-left-radius: 4px; }
-    .message.mine .message-content { background: var(--msg-mine); color: var(--msg-mine-text); border-radius: 16px; border-top-right-radius: 4px; }
-    
-    /* AURA CHAT ADMIN */
-    .message.admin-msg .message-content {
-      background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(180, 83, 9, 0.35));
-      border: 1.5px solid #f59e0b;
-      box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
-      color: #fff;
-    }
-    .username-tag { font-size: 0.8em; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-    .username-admin { 
-      color: #fbbf24 !important; 
-      font-weight: 800 !important; 
-      text-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
-    }
-    .admin-badge {
-      background: #f59e0b;
-      color: #000;
-      font-size: 0.65rem;
-      padding: 2px 6px;
-      border-radius: 6px;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
 
-    .message-text { font-size: 0.92em; line-height: 1.4; word-break: break-word; }
-    .timestamp { font-size: 0.68em; color: var(--text-muted); margin-top: 4px; text-align: right; }
-    .chat-input-area { padding: 16px 20px; display: flex; gap: 12px; border-top: 1px solid var(--card-border); background: var(--card-bg); }
+    /* CONTENT BUBBLE CHAT ALA WA */
+    .message-content { 
+      background: var(--msg-other); 
+      color: var(--text-main); 
+      padding: 6px 10px 8px 12px; 
+      border-radius: 12px; 
+      border-bottom-left-radius: 2px; 
+      position: relative; 
+      width: fit-content;
+      max-width: 100%;
+      cursor: pointer; 
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+    }
+    .message.mine .message-content { 
+      background: var(--msg-mine); 
+      color: var(--msg-mine-text); 
+      border-radius: 12px; 
+      border-bottom-right-radius: 2px; 
+      border-bottom-left-radius: 12px;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .message-content::after {
+      content: "";
+      display: table;
+      clear: both;
+    }
+    
+    /* REPLY DISPLAY INSIDE MESSAGE */
+    .reply-quote { background: var(--reply-bg); border-left: 4px solid var(--primary); border-radius: 6px; padding: 4px 8px; margin-bottom: 6px; font-size: 0.82rem; width: 100%; box-sizing: border-box; }
+    .message.mine .reply-quote { background: rgba(0, 0, 0, 0.3); border-left: 4px solid #ffffff; }
+    .reply-quote-user { font-weight: 700; font-size: 0.75rem; margin-bottom: 2px; color: #fbbf24; }
+    .message.mine .reply-quote-user { color: #ffffff; }
+    .reply-quote-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--reply-text); font-size: 0.78rem; font-weight: 500; }
+    .message.mine .reply-quote-text { color: rgba(255, 255, 255, 0.9); }
+
+    /* ACTION BUTTONS (REPLY & DELETE) */
+    .message-actions { opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; transform: scale(0.9); }
+    .message:hover .message-actions, .message.active-chat .message-actions { opacity: 1; pointer-events: auto; transform: scale(1); }
+    .reply-btn { cursor: pointer; font-size: 0.75rem; background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-main); padding: 3px 6px; border-radius: 6px; align-self: center; }
+
+    /* READ MORE STYLE */
+    .read-more-btn { color: #38bdf8; font-weight: 600; cursor: pointer; margin-left: 4px; text-decoration: underline; display: inline-block; }
+    .message.mine .read-more-btn { color: #fde68a; }
+
+    /* AURA CHAT ADMIN */
+    .message.admin-msg .message-content { background: linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(180, 83, 9, 0.45)); border: 1.5px solid #f59e0b; box-shadow: 0 0 16px rgba(245, 158, 11, 0.35); color: #fff; }
+    .username-tag { font-size: 0.75rem; font-weight: 700; margin-bottom: 2px; display: flex; align-items: center; gap: 4px; line-height: 1.2; }
+    .username-admin { color: #fbbf24 !important; font-weight: 800 !important; text-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+    .admin-badge { background: #f59e0b; color: #000; font-size: 0.6rem; padding: 1px 4px; border-radius: 4px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
+
+    .message-text { font-size: 0.88rem; line-height: 1.35; word-break: break-word; white-space: pre-wrap; display: inline; }
+    .timestamp { font-size: 0.62rem; color: var(--text-muted); margin-top: 2px; margin-left: 8px; float: right; position: relative; top: 4px; opacity: 0.8; }
+    .message.mine .timestamp { color: rgba(255, 255, 255, 0.85); }
+    
+    /* INPUT & REPLY PREVIEW AREA */
+    .chat-input-wrapper { border-top: 1px solid var(--card-border); background: rgba(15, 23, 42, 0.5); display: flex; flex-direction: column; }
+    .reply-preview-container { padding: 8px 16px; background: var(--input-bg); border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
+    .reply-preview-info { border-left: 3px solid var(--primary); padding-left: 8px; }
+    .close-reply-btn { cursor: pointer; color: var(--text-muted); font-size: 1.1rem; border: none; background: transparent; }
+
+    .chat-input-area { padding: 12px 16px; display: flex; gap: 10px; }
     .chat-input-area input { flex: 1; margin: 0; }
-    .chat-input-area button { width: auto; padding: 0 24px; margin: 0; }
+    .chat-input-area button { width: auto; padding: 0 20px; margin: 0; }
+
+    /* TYPING INDICATOR BUBBLE */
+    .typing-indicator-container { padding: 4px 16px; font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
+    .typing-dots { display: inline-flex; gap: 3px; }
+    .typing-dots span { width: 4px; height: 4px; background: var(--text-muted); border-radius: 50%; animation: typingBounce 1.4s infinite ease-in-out; }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingBounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-5px); } }
 
     /* MODAL */
-    .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--modal-overlay); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+    .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--modal-overlay); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 1000; padding: 16px; }
     .modal-content { width: 100%; max-width: 420px; padding: 24px; position: relative; }
     .close-modal { position: absolute; top: 18px; right: 20px; cursor: pointer; font-size: 1.2rem; color: var(--text-muted); width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
@@ -167,50 +208,35 @@
     .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 20px 0; }
     .cell { width: 70px; height: 70px; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.8em; font-weight: 700; cursor: pointer; }
 
-    /* CONNECT 4 BOARD STYLES - FIX KELUAR BOARD */
-    .c4-board-wrapper {
-      background: #111827;
-      padding: 12px;
-      border-radius: 16px;
-      margin: 16px 0;
-      border: 2px solid var(--card-border);
-      width: 100%;
-      box-sizing: border-box;
-    }
-    .c4-board { 
-      display: grid; 
-      grid-template-columns: repeat(7, 1fr); 
-      gap: 6px; 
-      width: 100%;
-    }
-    .c4-cell { 
-  aspect-ratio: 1 / 1; 
-  width: 100%;
-  background: #374151; /* Warna abu-abu terang kontras (Slate 700) */
-  border-radius: 50%; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  cursor: pointer; 
-  transition: all 0.2s ease;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4); /* Efek lubang papan/kedalaman */
-}
-
-/* Efek saat dikursor/hover */
-.c4-cell:hover { 
-  background: #4b5563; /* Abu-abu sedikit lebih terang saat di-hover */
-  transform: scale(1.05); 
-}
+    .c4-board-wrapper { background: rgba(17, 24, 39, 0.8); padding: 12px; border-radius: 16px; margin: 16px 0; border: 1px solid var(--card-border); width: 100%; box-sizing: border-box; }
+    .c4-board { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; width: 100%; }
+    .c4-cell { aspect-ratio: 1 / 1; width: 100%; background: rgba(55, 65, 81, 0.7); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4); }
+    .c4-cell:hover { background: #4b5563; transform: scale(1.05); }
     .c4-cell.red { background: #ef4444; box-shadow: inset 0 0 6px rgba(0,0,0,0.5); }
     .c4-cell.yellow { background: #eab308; box-shadow: inset 0 0 6px rgba(0,0,0,0.5); }
+
+    /* MEDIA QUERY RESPONSIF HP */
+    @media (max-width: 600px) {
+      body { padding: 0; align-items: flex-start; }
+      .chat-container { width: 100vw; height: 100dvh; border-radius: 0; border: none; }
+      .chat-header { padding: 10px 12px; }
+      .header-title-container h3 { font-size: 0.95rem; }
+      .online-badge { padding: 3px 8px; font-size: 0.7rem; }
+      .btn-secondary { padding: 6px 10px; font-size: 0.78rem; }
+      .user-profile-summary #my-username { max-width: 65px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem; }
+      .avatar { width: 32px; height: 32px; }
+    }
   </style>
 </head>
 <body>
 
-  <div id="toast-container"></div>
-  <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">🌙</button>
+  <video class="bg-video" autoplay loop muted playsinline>
+    <source src="walpaper.mp4" type="video/mp4">
+  </video>
+  <div class="bg-overlay"></div>
 
-  <!-- AUTH SECTION -->
+  <div id="toast-container"></div>
+
   <div id="auth-section" class="glass-card auth-container">
     <h2>ROOM-CHAT</h2>
     <div class="tab-buttons">
@@ -228,33 +254,56 @@
     </div>
   </div>
 
-  <!-- CHAT SECTION -->
   <div id="chat-section" class="glass-card chat-container hidden">
     <div class="chat-header">
-      <h3>💬 ROOM-CHAT</h3>
+      <div class="header-title-container">
+        <h3>💬 ROOM-CHAT</h3>
+        <div class="online-badge">
+          <span class="online-dot"></span>
+          <span id="online-count">1 Online</span>
+        </div>
+      </div>
       <div class="header-actions">
-        <button class="btn-secondary" onclick="openGameHub()">🎮 Game Mabar</button>
+        <button class="btn-secondary" onclick="openGameHub()">🎮 Mabar</button>
         <div class="user-profile-summary" onclick="openProfileModal()">
           <div class="avatar-wrapper">
             <span id="my-crown" class="admin-crown hidden">👑</span>
-            <img id="my-avatar" src="https://via.placeholder.com/38" class="avatar" alt="PP">
+            <img id="my-avatar" src="https://via.placeholder.com/36" class="avatar" alt="PP">
           </div>
           <span id="my-username" style="font-weight: 600;">User</span>
         </div>
       </div>
     </div>
+    
     <div id="chat-messages" class="chat-messages"></div>
-    <div class="chat-input-area">
-      <input type="text" id="message-input" placeholder="Ketik pesan..." onkeypress="handleKeyPress(event)">
-      <button class="btn-primary" onclick="sendMessage()">Kirim</button>
+
+    <div id="typing-indicator" class="typing-indicator-container hidden">
+      <div class="typing-dots">
+        <span></span><span></span><span></span>
+      </div>
+      <span id="typing-text">Seseorang sedang mengetik...</span>
+    </div>
+
+    <div class="chat-input-wrapper">
+      <div id="reply-preview" class="reply-preview-container hidden">
+        <div class="reply-preview-info">
+          <div style="font-size:0.75rem; font-weight:700; color:var(--primary);" id="reply-user-target">Membalas User</div>
+          <div style="font-size:0.8rem; color:var(--text-muted);" id="reply-text-target">Pesan yang dibalas</div>
+        </div>
+        <button class="close-reply-btn" onclick="cancelReply()">&times;</button>
+      </div>
+
+      <div class="chat-input-area">
+        <input type="text" id="message-input" placeholder="Ketik pesan..." oninput="handleTyping()" onkeypress="handleKeyPress(event)">
+        <button class="btn-primary" onclick="sendMessage()">Kirim</button>
+      </div>
     </div>
   </div>
 
-  <!-- EDIT PROFILE MODAL -->
   <div id="profile-modal" class="modal hidden">
     <div class="glass-card modal-content">
       <span class="close-modal" onclick="closeProfileModal()">&times;</span>
-      <h3 style="text-align: center; font-weight: 700;">Edit Profil</h3>
+      <h3 style="text-align: center; font-weight: 700; color: #fbbf24;">Edit Profil</h3>
       <div style="text-align:center; margin: 16px 0;">
         <img id="preview-img" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary);" src="https://via.placeholder.com/90">
       </div>
@@ -267,11 +316,10 @@
     </div>
   </div>
 
-  <!-- GAME HUB MODAL -->
   <div id="game-hub-modal" class="modal hidden">
     <div class="glass-card modal-content">
       <span class="close-modal" onclick="closeModal('game-hub-modal')">&times;</span>
-      <h3 style="font-weight: 700;">🎮 Game Hub Mabar</h3>
+      <h3 style="font-weight: 700; color: #fbbf24;">🎮 Game Hub Mabar</h3>
       
       <div style="margin-top: 16px;">
         <label style="font-size: 0.8rem; font-weight: 600;">Pilih Permainan:</label>
@@ -287,10 +335,9 @@
     </div>
   </div>
 
-  <!-- INVITE POPUP -->
   <div id="invite-received-modal" class="modal hidden">
     <div class="glass-card modal-content" style="text-align: center;">
-      <h3 style="font-weight: 700;">⚔️ Undangan Mabar!</h3>
+      <h3 style="font-weight: 700; color: #fbbf24;">⚔️ Undangan Mabar!</h3>
       <p id="invite-text" style="margin: 16px 0; font-size: 0.9rem; color: var(--text-muted);"></p>
       <div style="display: flex; gap: 10px;">
         <button class="btn-primary" style="margin: 0;" onclick="acceptInvite()">Terima</button>
@@ -299,11 +346,10 @@
     </div>
   </div>
 
-  <!-- TIC TAC TOE ARENA -->
   <div id="game-arena-modal" class="modal hidden">
     <div class="glass-card modal-content" style="width: auto; text-align: center;">
       <span class="close-modal" onclick="closeModal('game-arena-modal')">&times;</span>
-      <h3 style="font-weight: 700;">Tic-Tac-Toe</h3>
+      <h3 style="font-weight: 700; color: #fbbf24;">Tic-Tac-Toe</h3>
       <p id="game-status" style="margin-top: 6px; color: var(--primary); font-weight: 600; font-size: 0.88rem;">Menunggu Giliran...</p>
       <div class="board" id="board">
         <div class="cell" onclick="makeMove(0)"></div><div class="cell" onclick="makeMove(1)"></div><div class="cell" onclick="makeMove(2)"></div>
@@ -314,11 +360,10 @@
     </div>
   </div>
 
-  <!-- CONNECT 4 ARENA MODAL -->
   <div id="c4-arena-modal" class="modal hidden">
     <div class="glass-card modal-content" style="text-align: center;">
       <span class="close-modal" onclick="closeModal('c4-arena-modal')">&times;</span>
-      <h3 style="font-weight: 700;">🔴 Connect 4 (Empat Beruntun)</h3>
+      <h3 style="font-weight: 700; color: #fbbf24;">🔴 Connect 4 (Empat Beruntun)</h3>
       <p id="c4-game-status" style="margin-top: 6px; color: var(--primary); font-weight: 600; font-size: 0.88rem;">Menunggu...</p>
       
       <div class="c4-board-wrapper">
@@ -329,7 +374,6 @@
     </div>
   </div>
 
-  <!-- MAIN JS -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
@@ -337,7 +381,7 @@
       signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { 
-      getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, updateDoc
+      getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, getDoc, updateDoc, setDoc, deleteDoc
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     import { initConnect4 } from "./game-connect4.js";
@@ -355,7 +399,7 @@
 
     const firebaseConfig = {
       apiKey: "AIzaSyCJMRTfrl3j1jL2Bii4cG1IYD1ZoYHrp4Q",
-      authDomain: "galaxy-chat-app-31da3.firebaseapp.com",
+      authDomain: "chat.dimzlabs.my.id",
       projectId: "galaxy-chat-app-31da3",
       storageBucket: "galaxy-chat-app-31da3.firebasestorage.app",
       messagingSenderId: "662698919289",
@@ -375,12 +419,62 @@
     let tttSymbol = 'X';
     let pendingInviteId = null;
 
-    window.toggleTheme = () => {
-      const currentTheme = document.documentElement.getAttribute('data-theme');
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', newTheme);
-      document.getElementById('theme-btn').innerText = newTheme === 'dark' ? '🌙' : '☀️';
+    let replyTarget = null;
+    let typingTimeout = null;
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.message')) {
+        document.querySelectorAll('.message.active-chat').forEach(msg => {
+          msg.classList.remove('active-chat');
+        });
+      }
+    });
+
+    window.toggleChatActive = (event, element) => {
+      if (event.target.classList.contains('read-more-btn') || event.target.closest('.reply-btn')) {
+        return;
+      }
+      
+      const parentMessage = element.closest('.message');
+      const isAlreadyActive = parentMessage.classList.contains('active-chat');
+      
+      document.querySelectorAll('.message.active-chat').forEach(msg => {
+        msg.classList.remove('active-chat');
+      });
+
+      if (!isAlreadyActive) {
+        parentMessage.classList.add('active-chat');
+      }
     };
+
+    window.toggleReadMore = (btn) => {
+      const parent = btn.parentElement;
+      const shortText = parent.querySelector('.text-short');
+      const fullText = parent.querySelector('.text-full');
+
+      if (fullText.classList.contains('hidden')) {
+        shortText.classList.add('hidden');
+        fullText.classList.remove('hidden');
+        btn.innerText = ' Sembunyikan';
+      } else {
+        shortText.classList.remove('hidden');
+        fullText.classList.add('hidden');
+        btn.innerText = '... Baca selengkapnya';
+      }
+    };
+
+    function formatMessageText(text, limit = 300) {
+      const cleanText = escapeHTML(text || '');
+      if (cleanText.length <= limit) {
+        return cleanText;
+      }
+      const truncated = cleanText.substring(0, limit);
+      return `
+        <span class="text-short">${truncated}</span>
+        <span class="text-full hidden">${cleanText}</span>
+        <span class="read-more-btn" onclick="toggleReadMore(this)">... Baca selengkapnya</span>
+      `;
+    }
 
     window.sendMagicLink = async () => {
       const email = document.getElementById('email-input').value.trim();
@@ -437,242 +531,37 @@
         updateUI();
         loadMessages();
         listenToInvites();
+        setupPresence();
+        listenToTyping();
       } catch (error) { console.error("Profile Error:", error); }
     }
 
-    window.saveProfile = async () => {
-      const newUsername = document.getElementById('edit-username-input').value.trim();
-      const fileInput = document.getElementById('edit-avatar-file');
-      const saveBtn = document.getElementById('save-btn');
-      const file = fileInput.files[0];
-      if (!newUsername) return showToast('Username wajib diisi!', 'error');
-      saveBtn.innerText = "Saving..."; saveBtn.disabled = true;
-      let uploadedPhotoUrl = currentUserData.photoURL;
-
-      try {
-        if (file) {
-          const fileName = `${currentUserData.uid}_${Date.now()}.${file.name.split('.').pop()}`;
-          const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true });
-          if (uploadError) throw uploadError;
-          uploadedPhotoUrl = supabase.storage.from('avatars').getPublicUrl(fileName).data.publicUrl;
-        }
-        const newColor = generateUniqueColor(newUsername);
-        await supabase.from('user_profiles').upsert({ uid: currentUserData.uid, username: newUsername, photo_url: uploadedPhotoUrl, user_color: newColor, role: currentUserData.role || 'user' });
-        currentUserData.username = newUsername; currentUserData.photoURL = uploadedPhotoUrl; currentUserData.userColor = newColor;
-        updateUI(); closeProfileModal(); showToast('Profil berhasil diperbarui!', 'success');
-      } catch (err) { showToast("Gagal update profil: " + err.message, 'error'); }
-      finally { saveBtn.innerText = "Simpan Profil"; saveBtn.disabled = false; }
-    };
-
-    window.sendMessage = async () => {
-      const input = document.getElementById('message-input');
-      const text = input.value.trim();
-      if (!text || !currentUserData) return;
-      input.value = '';
-      await addDoc(collection(db, "messages"), {
-        uid: currentUserData.uid, username: currentUserData.username,
-        userColor: currentUserData.userColor || generateUniqueColor(currentUserData.username),
-        photoURL: currentUserData.photoURL, role: currentUserData.role || 'user',
-        text: text, createdAt: serverTimestamp()
+    async function setupPresence() {
+      if (!currentUserData) return;
+      const userPresenceRef = doc(db, "presence", currentUserData.uid);
+      
+      await setDoc(userPresenceRef, {
+        username: currentUserData.username,
+        lastSeen: serverTimestamp()
       });
-    };
 
-    function loadMessages() {
-      const q = query(collection(db, "messages"), orderBy("createdAt", "asc"));
-      onSnapshot(q, (snapshot) => {
-        const container = document.getElementById('chat-messages');
-        container.innerHTML = '';
+      setInterval(() => {
+        setDoc(userPresenceRef, {
+          username: currentUserData.username,
+          lastSeen: serverTimestamp()
+        });
+      }, 20000);
+
+      onSnapshot(collection(db, "presence"), (snapshot) => {
+        let count = 0;
+        const now = Date.now();
         snapshot.forEach((doc) => {
-          const msg = doc.data();
-          const isMine = msg.uid === currentUserData?.uid;
-          const isAdmin = msg.role === 'admin';
-          let timeStr = msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Baru saja';
-          const userColor = msg.userColor || generateUniqueColor(msg.username || 'User');
-          const usernameStyle = isAdmin ? '' : `color: ${userColor};`;
-
-          const msgEl = document.createElement('div');
-          msgEl.className = `message ${isMine ? 'mine' : ''} ${isAdmin ? 'admin-msg' : ''}`;
-          msgEl.innerHTML = `
-            <div class="avatar-wrapper">
-              ${isAdmin ? '<span class="admin-crown">👑</span>' : ''}
-              <img src="${msg.photoURL}" class="avatar">
-            </div>
-            <div class="message-content">
-              <span class="username-tag ${isAdmin ? 'username-admin' : ''}" style="${usernameStyle}">
-                ${msg.username}
-                ${isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}
-              </span>
-              <div class="message-text">${escapeHTML(msg.text || '')}</div>
-              <div class="timestamp">${timeStr}</div>
-            </div>`;
-          container.appendChild(msgEl);
-        });
-        container.scrollTop = container.scrollHeight;
-      });
-    }
-
-    /* INVITE SYSTEM */
-    window.sendInvite = async () => {
-      const targetUser = document.getElementById('invite-username-input').value.trim();
-      const gameType = document.getElementById('game-type-select').value;
-      if (!targetUser) return showToast('Masukkan username lawan!', 'error');
-
-      const matchData = gameType === 'connect4' 
-        ? { board: Array(42).fill(null), turn: '🔴', winner: null, gameType: 'connect4' }
-        : { board: Array(9).fill(null), turn: 'X', winner: null, gameType: 'tictactoe' };
-
-      const matchRef = await addDoc(collection(db, "matches"), matchData);
-
-      await addDoc(collection(db, "invites"), {
-        from: currentUserData.username,
-        to: targetUser,
-        matchId: matchRef.id,
-        gameType: gameType,
-        status: 'pending'
-      });
-
-      showToast(`Undangan ${gameType === 'connect4' ? 'Connect 4' : 'Tic-Tac-Toe'} dikirim ke ${targetUser}`, 'info');
-      closeModal('game-hub-modal');
-    };
-
-    function listenToInvites() {
-      const q = query(collection(db, "invites"));
-      onSnapshot(q, (snapshot) => {
-        snapshot.docChanges().forEach((change) => {
-          const invite = change.doc.data();
-          if (invite.to === currentUserData.username && invite.status === 'pending') {
-            pendingInviteId = change.doc.id;
-            const gameTitle = invite.gameType === 'connect4' ? 'Connect 4 🔴' : 'Tic-Tac-Toe ❌';
-            document.getElementById('invite-text').innerText = `"${invite.from}" mengundangmu bermain ${gameTitle}!`;
-            document.getElementById('invite-received-modal').classList.remove('hidden');
-          }
-          if (invite.from === currentUserData.username && invite.status === 'accepted') {
-            startSelectedGame(invite.matchId, invite.gameType, true);
+          const data = doc.data();
+          if (data.lastSeen) {
+            const timeDiff = (now - data.lastSeen.toDate().getTime()) / 1000;
+            if (timeDiff < 40) count++;
           }
         });
+        document.getElementById('online-count').innerText = `${count || 1} Online`;
       });
     }
-
-    window.acceptInvite = async () => {
-      closeModal('invite-received-modal');
-      const inviteRef = doc(db, "invites", pendingInviteId);
-      const inviteSnap = await getDoc(inviteRef);
-      const data = inviteSnap.data();
-      await updateDoc(inviteRef, { status: 'accepted' });
-
-      startSelectedGame(data.matchId, data.gameType, false);
-    };
-
-    window.declineInvite = async () => {
-      closeModal('invite-received-modal');
-      await updateDoc(doc(db, "invites", pendingInviteId), { status: 'declined' });
-    };
-
-    function startSelectedGame(matchId, gameType, isHost) {
-      if (gameType === 'connect4') {
-        const symbol = isHost ? '🔴' : '🟡';
-        initConnect4(db, matchId, symbol);
-      } else {
-        tttSymbol = isHost ? 'X' : 'O';
-        startTTTMatch(matchId);
-      }
-    }
-
-    /* TIC TAC TOE GAME */
-    function startTTTMatch(matchId) {
-      activeTTTMatchRef = doc(db, "matches", matchId);
-      document.getElementById('game-arena-modal').classList.remove('hidden');
-
-      onSnapshot(activeTTTMatchRef, (docSnap) => {
-        if (!docSnap.exists()) return;
-        const data = docSnap.data();
-        const cells = document.querySelectorAll('.cell');
-        data.board.forEach((val, i) => cells[i].innerText = val || '');
-        const statusEl = document.getElementById('game-status');
-        if (data.winner) {
-          statusEl.innerText = data.winner === 'SERI' ? 'Permainan Seri!' : `Pemenang: ${data.winner}!`;
-        } else {
-          statusEl.innerText = data.turn === tttSymbol ? 'Giliran Kamu!' : 'Menunggu lawan...';
-        }
-      });
-    }
-
-    window.makeMove = async (idx) => {
-      const matchSnap = await getDoc(activeTTTMatchRef);
-      const data = matchSnap.data();
-      if (data.winner || data.turn !== tttSymbol || data.board[idx] !== null) return;
-
-      const newBoard = [...data.board];
-      newBoard[idx] = tttSymbol;
-      
-      let winner = checkTTTWinner(newBoard);
-      let nextTurn = tttSymbol === 'X' ? 'O' : 'X';
-      await updateDoc(activeTTTMatchRef, { board: newBoard, turn: nextTurn, winner: winner });
-    };
-
-    function checkTTTWinner(b) {
-      const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-      for (let [a, b1, c] of lines) {
-        if (b[a] && b[a] === b[b1] && b[a] === b[c]) return b[a];
-      }
-      if (b.every(c => c !== null)) return 'SERI';
-      return null;
-    }
-
-    /* UTILS */
-    onAuthStateChanged(auth, async (user) => {
-      if (user) await initUserProfile(user, user.email ? user.email.split('@')[0] : 'User');
-      else {
-        document.getElementById('auth-section').classList.remove('hidden');
-        document.getElementById('chat-section').classList.add('hidden');
-      }
-    });
-
-    function updateUI() {
-      document.getElementById('auth-section').classList.add('hidden');
-      document.getElementById('chat-section').classList.remove('hidden');
-      const myUsernameEl = document.getElementById('my-username');
-      const myCrownEl = document.getElementById('my-crown');
-      
-      myUsernameEl.innerText = currentUserData.username;
-      
-      if (currentUserData.role === 'admin') {
-        myUsernameEl.classList.add('username-admin');
-        myCrownEl.classList.remove('hidden');
-      } else {
-        myUsernameEl.classList.remove('username-admin');
-        myCrownEl.classList.add('hidden');
-        myUsernameEl.style.color = currentUserData.userColor || generateUniqueColor(currentUserData.username);
-      }
-      document.getElementById('my-avatar').src = currentUserData.photoURL;
-      document.getElementById('preview-img').src = currentUserData.photoURL;
-    }
-
-    function generateUniqueColor(str) {
-      if (!str) return '#6366f1';
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-      return `hsl(${Math.abs(hash) % 360}, 75%, 60%)`;
-    }
-
-    function escapeHTML(str) { return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)); }
-
-    window.openProfileModal = () => {
-      document.getElementById('edit-username-input').value = currentUserData.username;
-      document.getElementById('preview-img').src = currentUserData.photoURL;
-      document.getElementById('profile-modal').classList.remove('hidden');
-    };
-    window.closeProfileModal = () => document.getElementById('profile-modal').classList.add('hidden');
-    window.openGameHub = () => document.getElementById('game-hub-modal').classList.remove('hidden');
-    window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
-    window.logout = () => signOut(auth).then(() => location.reload());
-    window.handleKeyPress = (e) => { if (e.key === 'Enter') sendMessage(); };
-    window.switchTab = (tab) => {
-      document.querySelectorAll('.tab-btn')[0].classList.toggle('active', tab === 'email');
-      document.querySelectorAll('.tab-btn')[1].classList.toggle('active', tab === 'username');
-      document.getElementById('form-email').classList.toggle('hidden', tab !== 'email');
-      document.getElementById('form-username').classList.toggle('hidden', tab !== 'username');
-    };
-  </script>
-</body>
-</html>
